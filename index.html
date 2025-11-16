@@ -8,8 +8,6 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SoundCloud Widget API for controlling the player -->
     <script src="https://w.soundcloud.com/player/api.js"></script>
 
@@ -63,7 +61,7 @@
             width: min(920px, 96%);
             display: grid;
             gap: 22px;
-            grid-template-columns: 1fr 360px;
+            grid-template-columns: 1fr; /* single column since stats removed */
             align-items:start;
             padding: 28px;
             border-radius: 18px;
@@ -73,14 +71,12 @@
             border: 1px solid rgba(255,255,255,0.6);
         }
 
-        /* Single-column layout on smaller screens */
+        /* Single-column layout on smaller screens (no change needed) */
         @media (max-width: 880px){
             .app{
                 grid-template-columns: 1fr;
                 padding: 20px;
             }
-            .stats-container { order: 2; }
-            .timer-container { order: 1; }
         }
 
         /* Timer card */
@@ -109,7 +105,8 @@
             margin-bottom: 18px;
         }
 
-        .timer {
+        /* Big live clock */
+        .clock {
             font-size: 4.4rem;
             font-weight: 600;
             color: var(--primary);
@@ -194,50 +191,6 @@
             display:block;
         }
 
-        /* Stats column */
-        .stats-container {
-            padding: 20px;
-            border-radius: 14px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.80));
-            border: 1px solid rgba(100,100,110,0.06);
-            box-shadow: 0 6px 20px rgba(22,22,22,0.06);
-            text-align:left;
-            min-height: 200px;
-        }
-        .stats-container h2 {
-            margin: 0 0 8px 0;
-            font-size: 1.05rem;
-            color: #213535;
-        }
-
-        .stats-item {
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            padding:8px 0;
-            color:var(--muted);
-            border-bottom: 1px dashed rgba(0,0,0,0.03);
-        }
-        .stats-item strong {
-            color: #173737;
-            font-weight:700;
-        }
-
-        #resetStats {
-            margin-top:12px;
-            width:100%;
-            background: linear-gradient(90deg,#ff6b6b,#ff3b3b);
-            border:none;
-            padding:10px;
-            color:white;
-            border-radius:10px;
-            cursor:pointer;
-            font-weight:600;
-        }
-        #resetStats:hover { opacity:0.95; }
-
-        canvas#focusChart { width:100% !important; height:200px !important; }
-
         /* small footer note */
         .note {
             font-size:0.84rem;
@@ -256,7 +209,8 @@
             <h1 id="appTitle">Prana</h1>
             <div class="subtitle">A calm, focused Pomodoro — with your Veena playlist</div>
 
-            <div class="timer" id="timerDisplay" aria-label="Timer">25:00</div>
+            <!-- Big live clock -->
+            <div class="clock" id="clockDisplay" aria-label="Current time">--:--:--</div>
 
             <div class="progress-bar" aria-hidden="true">
                 <div class="progress" id="progressBar"></div>
@@ -276,59 +230,28 @@
                 <!-- SoundCloud iframe - keep the same playlist but add an id for API control -->
                 <iframe id="soundcloudPlayer" class="soundcloud"
                     scrolling="no" frameborder="no" allow="autoplay"
-                    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/vaishnavey-1/sets/veena&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false">
+                    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/vaishnavey-1/sets/veena&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true"
+                >
                 </iframe>
             </div>
 
             <div class="note">Tip: Use the Pause button to take short breaks; your music will pause automatically.</div>
         </div>
-
-        <div class="stats-container" aria-live="polite">
-            <h2>Your Focus Stats</h2>
-
-            <div class="stats-item"><div>Today</div><strong id="dailyHours">0h 0m</strong></div>
-            <div class="stats-item"><div>This Week</div><strong id="weeklyHours">0h 0m</strong></div>
-            <div class="stats-item"><div>This Month</div><strong id="monthlyHours">0h 0m</strong></div>
-
-            <canvas id="focusChart" width="400" height="220" aria-label="Focus history chart"></canvas>
-
-            <button id="resetStats">Reset All Stats</button>
-        </div>
     </div>
 
     <script>
         // Elements
-        const timerDisplay = document.getElementById('timerDisplay');
+        const clockDisplay = document.getElementById('clockDisplay');
         const progressBar = document.getElementById('progressBar');
         const startBtn = document.getElementById('startBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const resetBtn = document.getElementById('resetBtn');
-        const dailyHoursDisplay = document.getElementById('dailyHours');
-        const weeklyHoursDisplay = document.getElementById('weeklyHours');
-        const monthlyHoursDisplay = document.getElementById('monthlyHours');
-        const resetStatsBtn = document.getElementById('resetStats');
-        const backgroundEl = document.getElementById('background');
 
-        // Timer settings
+        // Timer settings (Pomodoro logic kept but stats removed)
         const workDuration = 25 * 60; // seconds
         let timeLeft = workDuration;
         let timerInterval = null;
         let isPaused = true;
-        let sessionStartTime = 0; // epoch ms when current running segment started
-        let currentSessionAccumulated = 0; // seconds accumulated this session (credited already)
-
-        // Focus stats
-        let dailyFocusSeconds = 0;
-        let weeklyFocusSeconds = 0;
-        let monthlyFocusSeconds = 0;
-
-        // Stats reset markers
-        let lastDailyReset = null;
-        let lastWeeklyReset = null;
-        let lastMonthlyReset = null;
-
-        // History per-day: {"2025-11-16": 1500, ...}
-        // Stored under 'focusHistory' as JSON
 
         // SoundCloud widget
         let scWidget = null;
@@ -345,6 +268,7 @@
         let bgIndex = 0;
 
         function rotateBackground() {
+            const backgroundEl = document.getElementById('background');
             backgroundEl.style.backgroundImage = `url("${backgrounds[bgIndex]}")`;
             backgroundEl.style.opacity = 1;
             bgIndex = (bgIndex + 1) % backgrounds.length;
@@ -353,143 +277,20 @@
         rotateBackground();
         setInterval(rotateBackground, 9000);
 
-        // Utility: get ISO date string YYYY-MM-DD
-        function isoDate(d = new Date()) {
-            return d.toISOString().split('T')[0];
-        }
+        // Utility: format two-digit
+        function two(n){ return n.toString().padStart(2,'0'); }
 
-        // Week start (Sunday) for a given date
-        function weekStartDate(d) {
-            const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-            const day = date.getDay(); // 0 (Sun) - 6
-            date.setDate(date.getDate() - day);
-            return isoDate(date);
-        }
-
-        // Safe integer clamp
-        function safeInt(n) {
-            n = Math.floor(Number(n) || 0);
-            if (!isFinite(n) || n < 0) return 0;
-            return n;
-        }
-
-        // Load stats from localStorage with sane resets
-        function loadFocusStats() {
-            const raw = localStorage.getItem('pomodoroFocusStats');
+        // Live clock update
+        function updateClock() {
             const now = new Date();
-
-            if (raw) {
-                try {
-                    const s = JSON.parse(raw);
-                    dailyFocusSeconds = safeInt(s.dailyFocusSeconds);
-                    weeklyFocusSeconds = safeInt(s.weeklyFocusSeconds);
-                    monthlyFocusSeconds = safeInt(s.monthlyFocusSeconds);
-                    lastDailyReset = s.lastDailyReset ? new Date(s.lastDailyReset) : new Date();
-                    lastWeeklyReset = s.lastWeeklyReset ? new Date(s.lastWeeklyReset) : new Date();
-                    lastMonthlyReset = s.lastMonthlyReset ? new Date(s.lastMonthlyReset) : new Date();
-                } catch (e) {
-                    // corrupted storage -> reset
-                    dailyFocusSeconds = weeklyFocusSeconds = monthlyFocusSeconds = 0;
-                    lastDailyReset = lastWeeklyReset = lastMonthlyReset = new Date();
-                    localStorage.removeItem('pomodoroFocusStats');
-                }
-            } else {
-                // initialize
-                lastDailyReset = lastWeeklyReset = lastMonthlyReset = new Date();
-                dailyFocusSeconds = weeklyFocusSeconds = monthlyFocusSeconds = 0;
-            }
-
-            // If lastDailyReset isn't today, clear daily total
-            if (isoDate(lastDailyReset) !== isoDate(now)) {
-                dailyFocusSeconds = 0;
-                lastDailyReset = now;
-            }
-
-            // If lastWeeklyReset isn't in same week as now, clear weekly
-            if (weekStartDate(lastWeeklyReset) !== weekStartDate(now)) {
-                weeklyFocusSeconds = 0;
-                lastWeeklyReset = now;
-            }
-
-            // If different month or year, clear monthly
-            if (lastMonthlyReset.getMonth() !== now.getMonth() || lastMonthlyReset.getFullYear() !== now.getFullYear()) {
-                monthlyFocusSeconds = 0;
-                lastMonthlyReset = now;
-            }
-
-            updateFocusStatsDisplay();
-            saveFocusStats(); // persist any adjustments
+            const h = two(now.getHours());
+            const m = two(now.getMinutes());
+            const s = two(now.getSeconds());
+            clockDisplay.textContent = `${h}:${m}:${s}`;
         }
 
-        // Save stats and keep per-day history consistent
-        function saveFocusStats() {
-            const stats = {
-                dailyFocusSeconds: safeInt(dailyFocusSeconds),
-                weeklyFocusSeconds: safeInt(weeklyFocusSeconds),
-                monthlyFocusSeconds: safeInt(monthlyFocusSeconds),
-                lastDailyReset: lastDailyReset.toISOString(),
-                lastWeeklyReset: lastWeeklyReset.toISOString(),
-                lastMonthlyReset: lastMonthlyReset.toISOString(),
-            };
-            localStorage.setItem('pomodoroFocusStats', JSON.stringify(stats));
-            // focusHistory is managed in addFocusTime so we don't re-derive from totals here
-        }
-
-        // Add focused seconds and update history
-        function addFocusTime(seconds) {
-            seconds = safeInt(seconds);
-            if (seconds <= 0) return;
-
-            dailyFocusSeconds = safeInt(dailyFocusSeconds + seconds);
-            weeklyFocusSeconds = safeInt(weeklyFocusSeconds + seconds);
-            monthlyFocusSeconds = safeInt(monthlyFocusSeconds + seconds);
-
-            // Update history for today
-            const today = isoDate();
-            const historyRaw = localStorage.getItem('focusHistory') || '{}';
-            let history = {};
-            try { history = JSON.parse(historyRaw); } catch { history = {}; }
-            history[today] = safeInt((history[today] || 0) + seconds);
-            localStorage.setItem('focusHistory', JSON.stringify(history));
-
-            // persist totals and markers
-            lastDailyReset = new Date();
-            lastWeeklyReset = new Date(lastWeeklyReset); // keep previous unless weekly reset happened earlier
-            lastMonthlyReset = new Date(lastMonthlyReset);
-
-            saveFocusStats();
-            updateFocusStatsDisplay();
-            renderFocusChart();
-        }
-
-        function formatTime(totalSeconds) {
-            totalSeconds = safeInt(totalSeconds);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            return `${hours}h ${minutes}m`;
-        }
-
-        function updateFocusStatsDisplay() {
-            dailyHoursDisplay.textContent = formatTime(dailyFocusSeconds);
-            weeklyHoursDisplay.textContent = formatTime(weeklyFocusSeconds);
-            monthlyHoursDisplay.textContent = formatTime(monthlyFocusSeconds);
-        }
-
-        function resetAllStats() {
-            if (!confirm('Are you sure you want to reset all your focus statistics?')) return;
-            dailyFocusSeconds = weeklyFocusSeconds = monthlyFocusSeconds = 0;
-            lastDailyReset = lastWeeklyReset = lastMonthlyReset = new Date();
-            localStorage.removeItem('pomodoroFocusStats');
-            localStorage.removeItem('focusHistory');
-            updateFocusStatsDisplay();
-            renderFocusChart();
-            alert('All focus statistics have been reset.');
-        }
-
-        function updateTimerDisplay() {
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
-            timerDisplay.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+        // Update only progress bar based on current timeLeft
+        function updateProgressBar() {
             const progressWidth = Math.max(0, Math.min(100, ((workDuration - timeLeft) / workDuration) * 100));
             progressBar.style.width = `${progressWidth}%`;
         }
@@ -500,40 +301,16 @@
             startBtn.textContent = 'Running';
             startBtn.disabled = true;
             pauseBtn.disabled = false;
-            // mark session start
-            sessionStartTime = Date.now();
-            // ensure we have a non-zero accumulator if resuming from earlier run (keeps track across pauses)
+
             timerInterval = setInterval(() => {
                 timeLeft--;
-                updateTimerDisplay();
+                updateProgressBar();
 
                 if (timeLeft <= 0) {
                     clearInterval(timerInterval);
                     timerInterval = null;
-                    // compute the final elapsed for this running segment
-                    let elapsedSegment = 0;
-                    if (sessionStartTime) {
-                        elapsedSegment = Math.floor((Date.now() - sessionStartTime) / 1000);
-                        if (elapsedSegment < 0) elapsedSegment = 0;
-                    }
-                    currentSessionAccumulated += elapsedSegment;
-
-                    // remaining amount to reach full workDuration (in case we added on pauses)
-                    const remaining = Math.max(0, workDuration - currentSessionAccumulated);
-                    if (remaining > 0) {
-                        addFocusTime(remaining);
-                        currentSessionAccumulated += remaining;
-                    }
-
-                    // safeguard: don't allow totals to exceed reasonable bounds (sanity)
-                    dailyFocusSeconds = safeInt(dailyFocusSeconds);
-                    weeklyFocusSeconds = safeInt(weeklyFocusSeconds);
-                    monthlyFocusSeconds = safeInt(monthlyFocusSeconds);
-
-                    alert("Time's up! Take a break. Your focused time has been recorded.");
-                    // pause music if playing
+                    alert("Time's up! Take a break.");
                     pauseMusic();
-                    // reset for next session
                     resetTimer(true);
                 }
             }, 1000);
@@ -551,16 +328,6 @@
             startBtn.disabled = false;
             pauseBtn.disabled = true;
 
-            // compute elapsed segment and credit it
-            if (sessionStartTime) {
-                const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
-                if (elapsed > 0) {
-                    currentSessionAccumulated += elapsed;
-                    addFocusTime(elapsed);
-                }
-            }
-            sessionStartTime = 0;
-
             // pause music
             pauseMusic();
         }
@@ -571,54 +338,13 @@
             timerInterval = null;
             timeLeft = workDuration;
             isPaused = true;
-            sessionStartTime = 0;
-            currentSessionAccumulated = 0;
             startBtn.disabled = false;
             startBtn.textContent = 'Start';
             pauseBtn.disabled = true;
-            updateTimerDisplay();
+            updateProgressBar();
 
             // pause music on reset
             pauseMusic();
-        }
-
-        // Chart rendering
-        function renderFocusChart() {
-            const ctx = document.getElementById('focusChart').getContext('2d');
-            const history = JSON.parse(localStorage.getItem('focusHistory') || '{}');
-            const days = [];
-            const hours = [];
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                const key = isoDate(d);
-                days.push(key.slice(5)); // MM-DD
-                hours.push(((history[key] || 0) / 3600).toFixed(2));
-            }
-
-            if (window.focusChartInstance) window.focusChartInstance.destroy();
-
-            window.focusChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: days,
-                    datasets: [{
-                        label: 'Hours Focused',
-                        data: hours,
-                        backgroundColor: 'rgba(64,128,128,0.85)',
-                        borderColor: 'rgba(64,128,128,1)',
-                        borderWidth: 1,
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: { beginAtZero: true, title: { display: true, text: 'Hours' } },
-                        x: { title: { display: true, text: 'Date (MM-DD)' } }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
         }
 
         // SoundCloud control helpers (using Widget API)
@@ -648,20 +374,17 @@
             if (!confirm('Reset the current timer?')) return;
             resetTimer();
         });
-        resetStatsBtn.addEventListener('click', resetAllStats);
 
         // Initialize on DOM ready
         document.addEventListener('DOMContentLoaded', () => {
             // prepare UI state
-            updateTimerDisplay();
+            updateClock();
+            setInterval(updateClock, 1000); // live clock
+            updateProgressBar();
             pauseBtn.disabled = true;
 
             // SoundCloud widget setup
             initSoundCloudWidget();
-
-            // load stats and render chart
-            loadFocusStats();
-            renderFocusChart();
         });
 
         // Make sure widget gets initialized even if SC script loads after DOMContentLoaded
@@ -671,12 +394,7 @@
 
         // Expose a safe method for debugging (optional)
         window.__prana = {
-            addFocusTime,
-            saveFocusStats,
-            loadFocusStats,
-            getState: () => ({
-                timeLeft, isPaused, dailyFocusSeconds, weeklyFocusSeconds, monthlyFocusSeconds
-            })
+            saveState: () => ({ timeLeft, isPaused })
         };
     </script>
 </body>
