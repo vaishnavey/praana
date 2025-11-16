@@ -6,168 +6,298 @@
     <title>Prana</title>
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SoundCloud Widget API for controlling the player -->
+    <script src="https://w.soundcloud.com/player/api.js"></script>
 
     <style>
-        body {
+        :root{
+            --card-bg: rgba(255,255,255,0.75);
+            --accent: #2f6f6f;
+            --muted: #6a6f76;
+            --glass-blur: 8px;
+            --card-radius: 16px;
+            --shadow: 0 10px 30px rgba(10,10,10,0.18);
+            --primary: #4f8f8f;
+        }
+
+        /* Full-screen rotating serene landscape background */
+        body{
+            margin:0;
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #FFD700, #FF6347);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: #333;
-            background-size: 400% 400%;
-            animation: gradientAnimation 15s ease infinite;
+            color: #222;
+            min-height:100vh;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background-color:#e6eef0;
+            overflow-y:auto;
+            position:relative;
         }
 
-        @keyframes gradientAnimation {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
+        /* Background slideshow container (behind everything) */
+        .bg {
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            background-size: cover;
+            background-position: center;
+            transition: opacity 1s ease-in-out, background-image 1s ease-in-out;
+            filter: saturate(0.95) contrast(0.95);
         }
 
-        .timer-container, .stats-container {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 30px 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            border: 5px solid #DAA520;
-            max-width: 500px;
-            width: 100%;
-            margin: 20px 0;
-            text-align: center;
+        /* gentle dark overlay for contrast */
+        .bg::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(10,10,10,0.15), rgba(10,10,10,0.05));
+            z-index: 0;
         }
 
-        .stats-container {
-            border-color: #483D8B;
+        /* Center app container */
+        .app {
+            width: min(920px, 96%);
+            display: grid;
+            gap: 22px;
+            grid-template-columns: 1fr 360px;
+            align-items:start;
+            padding: 28px;
+            border-radius: 18px;
+            backdrop-filter: blur(var(--glass-blur)) saturate(1.05);
+            background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.65));
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+
+        /* Single-column layout on smaller screens */
+        @media (max-width: 880px){
+            .app{
+                grid-template-columns: 1fr;
+                padding: 20px;
+            }
+            .stats-container { order: 2; }
+            .timer-container { order: 1; }
+        }
+
+        /* Timer card */
+        .timer-container {
+            padding: 26px;
+            border-radius: var(--card-radius);
+            background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(250,250,250,0.8));
+            border: 1px solid rgba(100,100,110,0.06);
+            box-shadow: 0 8px 22px rgba(20,20,20,0.08);
+            display:flex;
+            flex-direction:column;
+            align-items:center;
         }
 
         h1 {
-            color: #8B0000;
             font-family: 'Merriweather', serif;
-            font-size: 2.5em;
-            margin-bottom: 25px;
+            margin: 0 0 6px 0;
+            color: #1f3b3b;
+            font-size: 1.8rem;
+            letter-spacing: 0.4px;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: var(--muted);
+            margin-bottom: 18px;
         }
 
         .timer {
-            font-size: 5em;
-            color: #4CAF50;
-            margin: 30px 0;
+            font-size: 4.4rem;
             font-weight: 600;
-            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2);
+            color: var(--primary);
+            margin: 12px 0 4px;
+            text-shadow: 0 6px 14px rgba(79,143,143,0.12);
+            font-variant-numeric: tabular-nums;
         }
 
         .progress-bar {
-            height: 25px;
-            width: 90%;
-            background-color: #eee;
-            border-radius: 12px;
-            margin: 25px auto;
+            height: 12px;
+            width: 100%;
+            background-color: rgba(0,0,0,0.06);
+            border-radius: 99px;
+            margin-top: 18px;
             overflow: hidden;
-            border: 1px solid #ccc;
         }
-
         .progress {
             height: 100%;
-            background-color: #FF8C00;
-            width: 0;
-            transition: width 0.5s linear;
-            border-radius: 12px;
+            background: linear-gradient(90deg, #6aa6a6, #3c7c7c);
+            width: 0%;
+            transition: width 0.4s linear;
         }
 
-        .button-group button {
-            background-color: #008080;
-            color: white;
+        .button-group {
+            display:flex;
+            gap:12px;
+            margin-top:22px;
+            flex-wrap:wrap;
+            justify-content:center;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: #fff;
             border: none;
-            padding: 15px 30px;
-            border-radius: 30px;
-            font-size: 1.3em;
-            cursor: pointer;
-            margin: 10px;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            padding: 12px 20px;
+            border-radius: 12px;
+            cursor:pointer;
+            font-weight:600;
+            min-width: 110px;
+            box-shadow: 0 6px 16px rgba(38,115,115,0.16);
+            transition: transform 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
+        }
+        .btn.secondary {
+            background: white;
+            color: var(--primary);
+            border: 1px solid rgba(79,143,143,0.12);
+            box-shadow: 0 6px 14px rgba(18,18,18,0.05);
+        }
+        .btn.ghost {
+            background: transparent;
+            color: var(--muted);
+            border: 1px dashed rgba(0,0,0,0.06);
+            box-shadow: none;
         }
 
-        .button-group button:hover {
-            background-color: #006666;
-            transform: translateY(-2px);
+        .btn:active { transform: translateY(1px); }
+        .btn[disabled] { opacity:0.55; cursor: not-allowed; transform:none; box-shadow:none; }
+
+        .music-card {
+            margin-top:16px;
+            width:100%;
+            border-radius: 12px;
+            overflow:hidden;
+            border:1px solid rgba(0,0,0,0.04);
+            background: linear-gradient(180deg, rgba(250,250,250,0.9), rgba(245,245,245,0.9));
+        }
+        .music-info {
+            padding:10px 12px;
+            display:flex;
+            gap:12px;
+            align-items:center;
+            justify-content:space-between;
+            font-size:0.94rem;
+            color:var(--muted);
         }
 
-        .button-group button:active {
-            transform: translateY(0);
+        iframe.soundcloud {
+            width:100%;
+            height:110px;
+            border:0;
+            display:block;
         }
 
-        .music-note {
-            font-size: 1.1em;
-            color: #6A5ACD;
-            margin-top: 25px;
-            font-style: italic;
+        /* Stats column */
+        .stats-container {
+            padding: 20px;
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.80));
+            border: 1px solid rgba(100,100,110,0.06);
+            box-shadow: 0 6px 20px rgba(22,22,22,0.06);
+            text-align:left;
+            min-height: 200px;
+        }
+        .stats-container h2 {
+            margin: 0 0 8px 0;
+            font-size: 1.05rem;
+            color: #213535;
         }
 
         .stats-item {
-            font-size: 1.2em;
-            margin-bottom: 15px;
-            color: #36454F;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:8px 0;
+            color:var(--muted);
+            border-bottom: 1px dashed rgba(0,0,0,0.03);
         }
-
         .stats-item strong {
-            color: #008080;
-            font-size: 1.3em;
+            color: #173737;
+            font-weight:700;
         }
 
         #resetStats {
-            background-color: #DC143C;
-            margin-top: 20px;
+            margin-top:12px;
+            width:100%;
+            background: linear-gradient(90deg,#ff6b6b,#ff3b3b);
+            border:none;
+            padding:10px;
+            color:white;
+            border-radius:10px;
+            cursor:pointer;
+            font-weight:600;
+        }
+        #resetStats:hover { opacity:0.95; }
+
+        canvas#focusChart { width:100% !important; height:200px !important; }
+
+        /* small footer note */
+        .note {
+            font-size:0.84rem;
+            color:var(--muted);
+            margin-top:10px;
+            text-align:center;
         }
 
-        #resetStats:hover {
-            background-color: #B22222;
-        }
-
-        canvas {
-            max-width: 500px;
-            margin-top: 30px;
-        }
     </style>
 </head>
 <body>
-    <div class="timer-container">
-        <h1>Prana</h1>
-        <div class="timer" id="timerDisplay">25:00</div>
-        <div class="progress-bar">
-            <div class="progress" id="progressBar"></div>
+    <div class="bg" id="background"></div>
+
+    <div class="app" role="main" aria-labelledby="appTitle">
+        <div class="timer-container" aria-live="polite">
+            <h1 id="appTitle">Prana</h1>
+            <div class="subtitle">A calm, focused Pomodoro — with your Veena playlist</div>
+
+            <div class="timer" id="timerDisplay" aria-label="Timer">25:00</div>
+
+            <div class="progress-bar" aria-hidden="true">
+                <div class="progress" id="progressBar"></div>
+            </div>
+
+            <div class="button-group" role="group" aria-label="Timer controls">
+                <button class="btn" id="startBtn">Start</button>
+                <button class="btn secondary" id="pauseBtn">Pause</button>
+                <button class="btn ghost" id="resetBtn">Reset</button>
+            </div>
+
+            <div class="music-card" aria-label="Music player">
+                <div class="music-info">
+                    <div>🎵 Now playing: Veena playlist</div>
+                    <div style="font-size:0.85rem; color:var(--muted)">(controlled by Start/Pause)</div>
+                </div>
+                <!-- SoundCloud iframe - keep the same playlist but add an id for API control -->
+                <iframe id="soundcloudPlayer" class="soundcloud"
+                    scrolling="no" frameborder="no" allow="autoplay"
+                    src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/vaishnavey-1/sets/veena&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false">
+                </iframe>
+            </div>
+
+            <div class="note">Tip: Use the Pause button to take short breaks; your music will pause automatically.</div>
         </div>
-        <div class="button-group">
-            <button id="startBtn">Start</button>
-            <button id="pauseBtn">Pause</button>
-            <button id="resetBtn">Reset</button>
-        </div>
-        <div class="music-note">
-            🎵 Now playing: Your Veena SoundCloud playlist 🎵<br/>
-            <iframe width="100%" height="120" scrolling="no" frameborder="no" allow="autoplay"
-                src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/vaishnavey-1/sets/veena&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true">
-            </iframe>
+
+        <div class="stats-container" aria-live="polite">
+            <h2>Your Focus Stats</h2>
+
+            <div class="stats-item"><div>Today</div><strong id="dailyHours">0h 0m</strong></div>
+            <div class="stats-item"><div>This Week</div><strong id="weeklyHours">0h 0m</strong></div>
+            <div class="stats-item"><div>This Month</div><strong id="monthlyHours">0h 0m</strong></div>
+
+            <canvas id="focusChart" width="400" height="220" aria-label="Focus history chart"></canvas>
+
+            <button id="resetStats">Reset All Stats</button>
         </div>
     </div>
-
-    <div class="stats-container">
-        <h2>Your Focus Stats</h2>
-        <div class="stats-item">Today: <strong id="dailyHours">0h 0m</strong></div>
-        <div class="stats-item">This Week: <strong id="weeklyHours">0h 0m</strong></div>
-        <div class="stats-item">This Month: <strong id="monthlyHours">0h 0m</strong></div>
-        <button id="resetStats">Reset All Stats</button>
-    </div>
-
-    <canvas id="focusChart" width="500" height="300"></canvas>
 
     <script>
+        // Elements
         const timerDisplay = document.getElementById('timerDisplay');
         const progressBar = document.getElementById('progressBar');
         const startBtn = document.getElementById('startBtn');
@@ -177,61 +307,163 @@
         const weeklyHoursDisplay = document.getElementById('weeklyHours');
         const monthlyHoursDisplay = document.getElementById('monthlyHours');
         const resetStatsBtn = document.getElementById('resetStats');
+        const backgroundEl = document.getElementById('background');
 
-        let timeLeft = 25 * 60;
-        const workDuration = 25 * 60;
-        let timerInterval;
+        // Timer settings
+        const workDuration = 25 * 60; // seconds
+        let timeLeft = workDuration;
+        let timerInterval = null;
         let isPaused = true;
-        let sessionStartTime = 0;
+        let sessionStartTime = 0; // epoch ms when current running segment started
+        let currentSessionAccumulated = 0; // seconds accumulated this session (credited already)
 
+        // Focus stats
         let dailyFocusSeconds = 0;
         let weeklyFocusSeconds = 0;
         let monthlyFocusSeconds = 0;
-        let lastActivityDate = new Date();
 
-        function loadFocusStats() {
-            const savedStats = localStorage.getItem('pomodoroFocusStats');
-            if (savedStats) {
-                const stats = JSON.parse(savedStats);
-                dailyFocusSeconds = stats.dailyFocusSeconds || 0;
-                weeklyFocusSeconds = stats.weeklyFocusSeconds || 0;
-                monthlyFocusSeconds = stats.monthlyFocusSeconds || 0;
-                lastActivityDate = new Date(stats.lastActivityDate);
+        // Stats reset markers
+        let lastDailyReset = null;
+        let lastWeeklyReset = null;
+        let lastMonthlyReset = null;
 
-                const now = new Date();
-                if (now.toDateString() !== lastActivityDate.toDateString()) dailyFocusSeconds = 0;
-                if (now.getDay() < lastActivityDate.getDay() || now.getTime() - lastActivityDate.getTime() > 7 * 86400000) weeklyFocusSeconds = 0;
-                if (now.getMonth() !== lastActivityDate.getMonth() || now.getFullYear() !== lastActivityDate.getFullYear()) monthlyFocusSeconds = 0;
-            }
-            updateFocusStatsDisplay();
-            lastActivityDate = new Date();
-            saveFocusStats();
+        // History per-day: {"2025-11-16": 1500, ...}
+        // Stored under 'focusHistory' as JSON
+
+        // SoundCloud widget
+        let scWidget = null;
+        let scReady = false;
+        const scIframe = document.getElementById('soundcloudPlayer');
+
+        // Background images to rotate (serene landscapes from Unsplash)
+        const backgrounds = [
+            "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=1400&q=80",
+            "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=80",
+            "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
+            "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=80"
+        ];
+        let bgIndex = 0;
+
+        function rotateBackground() {
+            backgroundEl.style.backgroundImage = `url("${backgrounds[bgIndex]}")`;
+            backgroundEl.style.opacity = 1;
+            bgIndex = (bgIndex + 1) % backgrounds.length;
+        }
+        // initial background and start interval
+        rotateBackground();
+        setInterval(rotateBackground, 9000);
+
+        // Utility: get ISO date string YYYY-MM-DD
+        function isoDate(d = new Date()) {
+            return d.toISOString().split('T')[0];
         }
 
+        // Week start (Sunday) for a given date
+        function weekStartDate(d) {
+            const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const day = date.getDay(); // 0 (Sun) - 6
+            date.setDate(date.getDate() - day);
+            return isoDate(date);
+        }
+
+        // Safe integer clamp
+        function safeInt(n) {
+            n = Math.floor(Number(n) || 0);
+            if (!isFinite(n) || n < 0) return 0;
+            return n;
+        }
+
+        // Load stats from localStorage with sane resets
+        function loadFocusStats() {
+            const raw = localStorage.getItem('pomodoroFocusStats');
+            const now = new Date();
+
+            if (raw) {
+                try {
+                    const s = JSON.parse(raw);
+                    dailyFocusSeconds = safeInt(s.dailyFocusSeconds);
+                    weeklyFocusSeconds = safeInt(s.weeklyFocusSeconds);
+                    monthlyFocusSeconds = safeInt(s.monthlyFocusSeconds);
+                    lastDailyReset = s.lastDailyReset ? new Date(s.lastDailyReset) : new Date();
+                    lastWeeklyReset = s.lastWeeklyReset ? new Date(s.lastWeeklyReset) : new Date();
+                    lastMonthlyReset = s.lastMonthlyReset ? new Date(s.lastMonthlyReset) : new Date();
+                } catch (e) {
+                    // corrupted storage -> reset
+                    dailyFocusSeconds = weeklyFocusSeconds = monthlyFocusSeconds = 0;
+                    lastDailyReset = lastWeeklyReset = lastMonthlyReset = new Date();
+                    localStorage.removeItem('pomodoroFocusStats');
+                }
+            } else {
+                // initialize
+                lastDailyReset = lastWeeklyReset = lastMonthlyReset = new Date();
+                dailyFocusSeconds = weeklyFocusSeconds = monthlyFocusSeconds = 0;
+            }
+
+            // If lastDailyReset isn't today, clear daily total
+            if (isoDate(lastDailyReset) !== isoDate(now)) {
+                dailyFocusSeconds = 0;
+                lastDailyReset = now;
+            }
+
+            // If lastWeeklyReset isn't in same week as now, clear weekly
+            if (weekStartDate(lastWeeklyReset) !== weekStartDate(now)) {
+                weeklyFocusSeconds = 0;
+                lastWeeklyReset = now;
+            }
+
+            // If different month or year, clear monthly
+            if (lastMonthlyReset.getMonth() !== now.getMonth() || lastMonthlyReset.getFullYear() !== now.getFullYear()) {
+                monthlyFocusSeconds = 0;
+                lastMonthlyReset = now;
+            }
+
+            updateFocusStatsDisplay();
+            saveFocusStats(); // persist any adjustments
+        }
+
+        // Save stats and keep per-day history consistent
         function saveFocusStats() {
             const stats = {
-                dailyFocusSeconds,
-                weeklyFocusSeconds,
-                monthlyFocusSeconds,
-                lastActivityDate: new Date().toISOString()
+                dailyFocusSeconds: safeInt(dailyFocusSeconds),
+                weeklyFocusSeconds: safeInt(weeklyFocusSeconds),
+                monthlyFocusSeconds: safeInt(monthlyFocusSeconds),
+                lastDailyReset: lastDailyReset.toISOString(),
+                lastWeeklyReset: lastWeeklyReset.toISOString(),
+                lastMonthlyReset: lastMonthlyReset.toISOString(),
             };
             localStorage.setItem('pomodoroFocusStats', JSON.stringify(stats));
-
-            const today = new Date().toISOString().split('T')[0];
-            const history = JSON.parse(localStorage.getItem('focusHistory') || '{}');
-            history[today] = (history[today] || 0) + (dailyFocusSeconds - (history[today] || 0));
-            localStorage.setItem('focusHistory', JSON.stringify(history));
+            // focusHistory is managed in addFocusTime so we don't re-derive from totals here
         }
 
+        // Add focused seconds and update history
         function addFocusTime(seconds) {
-            dailyFocusSeconds += seconds;
-            weeklyFocusSeconds += seconds;
-            monthlyFocusSeconds += seconds;
-            updateFocusStatsDisplay();
+            seconds = safeInt(seconds);
+            if (seconds <= 0) return;
+
+            dailyFocusSeconds = safeInt(dailyFocusSeconds + seconds);
+            weeklyFocusSeconds = safeInt(weeklyFocusSeconds + seconds);
+            monthlyFocusSeconds = safeInt(monthlyFocusSeconds + seconds);
+
+            // Update history for today
+            const today = isoDate();
+            const historyRaw = localStorage.getItem('focusHistory') || '{}';
+            let history = {};
+            try { history = JSON.parse(historyRaw); } catch { history = {}; }
+            history[today] = safeInt((history[today] || 0) + seconds);
+            localStorage.setItem('focusHistory', JSON.stringify(history));
+
+            // persist totals and markers
+            lastDailyReset = new Date();
+            lastWeeklyReset = new Date(lastWeeklyReset); // keep previous unless weekly reset happened earlier
+            lastMonthlyReset = new Date(lastMonthlyReset);
+
             saveFocusStats();
+            updateFocusStatsDisplay();
+            renderFocusChart();
         }
 
         function formatTime(totalSeconds) {
+            totalSeconds = safeInt(totalSeconds);
             const hours = Math.floor(totalSeconds / 3600);
             const minutes = Math.floor((totalSeconds % 3600) / 60);
             return `${hours}h ${minutes}m`;
@@ -244,77 +476,123 @@
         }
 
         function resetAllStats() {
-            if (confirm('Are you sure you want to reset all your focus statistics?')) {
-                dailyFocusSeconds = 0;
-                weeklyFocusSeconds = 0;
-                monthlyFocusSeconds = 0;
-                localStorage.removeItem('pomodoroFocusStats');
-                localStorage.removeItem('focusHistory');
-                updateFocusStatsDisplay();
-                renderFocusChart();
-                alert('All focus statistics have been reset.');
-            }
+            if (!confirm('Are you sure you want to reset all your focus statistics?')) return;
+            dailyFocusSeconds = weeklyFocusSeconds = monthlyFocusSeconds = 0;
+            lastDailyReset = lastWeeklyReset = lastMonthlyReset = new Date();
+            localStorage.removeItem('pomodoroFocusStats');
+            localStorage.removeItem('focusHistory');
+            updateFocusStatsDisplay();
+            renderFocusChart();
+            alert('All focus statistics have been reset.');
         }
 
         function updateTimerDisplay() {
             const minutes = Math.floor(timeLeft / 60);
             const seconds = timeLeft % 60;
-            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            const progressWidth = ((workDuration - timeLeft) / workDuration) * 100;
+            timerDisplay.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+            const progressWidth = Math.max(0, Math.min(100, ((workDuration - timeLeft) / workDuration) * 100));
             progressBar.style.width = `${progressWidth}%`;
         }
 
         function startTimer() {
-            if (isPaused) {
-                isPaused = false;
-                startBtn.textContent = 'Continue';
-                pauseBtn.disabled = false;
-                sessionStartTime = new Date().getTime();
-                timerInterval = setInterval(() => {
-                    timeLeft--;
-                    updateTimerDisplay();
-                    if (timeLeft <= 0) {
-                        clearInterval(timerInterval);
-                        addFocusTime(workDuration);
-                        alert('Time\'s up! Take a break. Your focused time has been recorded.');
-                        resetTimer();
+            if (!isPaused) return; // already running
+            isPaused = false;
+            startBtn.textContent = 'Running';
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            // mark session start
+            sessionStartTime = Date.now();
+            // ensure we have a non-zero accumulator if resuming from earlier run (keeps track across pauses)
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    // compute the final elapsed for this running segment
+                    let elapsedSegment = 0;
+                    if (sessionStartTime) {
+                        elapsedSegment = Math.floor((Date.now() - sessionStartTime) / 1000);
+                        if (elapsedSegment < 0) elapsedSegment = 0;
                     }
-                }, 1000);
-            }
+                    currentSessionAccumulated += elapsedSegment;
+
+                    // remaining amount to reach full workDuration (in case we added on pauses)
+                    const remaining = Math.max(0, workDuration - currentSessionAccumulated);
+                    if (remaining > 0) {
+                        addFocusTime(remaining);
+                        currentSessionAccumulated += remaining;
+                    }
+
+                    // safeguard: don't allow totals to exceed reasonable bounds (sanity)
+                    dailyFocusSeconds = safeInt(dailyFocusSeconds);
+                    weeklyFocusSeconds = safeInt(weeklyFocusSeconds);
+                    monthlyFocusSeconds = safeInt(monthlyFocusSeconds);
+
+                    alert("Time's up! Take a break. Your focused time has been recorded.");
+                    // pause music if playing
+                    pauseMusic();
+                    // reset for next session
+                    resetTimer(true);
+                }
+            }, 1000);
+
+            // start music
+            playMusic();
         }
 
         function pauseTimer() {
-            if (!isPaused) {
-                clearInterval(timerInterval);
-                isPaused = true;
-                startBtn.textContent = 'Resume';
-                const focusedSecondsThisSegment = Math.floor((new Date().getTime() - sessionStartTime) / 1000);
-                if (focusedSecondsThisSegment > 0) {
-                    addFocusTime(focusedSecondsThisSegment);
+            if (isPaused) return;
+            clearInterval(timerInterval);
+            timerInterval = null;
+            isPaused = true;
+            startBtn.textContent = 'Resume';
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+
+            // compute elapsed segment and credit it
+            if (sessionStartTime) {
+                const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+                if (elapsed > 0) {
+                    currentSessionAccumulated += elapsed;
+                    addFocusTime(elapsed);
                 }
             }
+            sessionStartTime = 0;
+
+            // pause music
+            pauseMusic();
         }
 
-        function resetTimer() {
+        // resetTimer(internalResetFlag) when internalResetFlag true skip confirmation and keep UI defaults
+        function resetTimer(internalReset = false) {
             clearInterval(timerInterval);
+            timerInterval = null;
             timeLeft = workDuration;
             isPaused = true;
+            sessionStartTime = 0;
+            currentSessionAccumulated = 0;
+            startBtn.disabled = false;
             startBtn.textContent = 'Start';
             pauseBtn.disabled = true;
             updateTimerDisplay();
+
+            // pause music on reset
+            pauseMusic();
         }
 
+        // Chart rendering
         function renderFocusChart() {
             const ctx = document.getElementById('focusChart').getContext('2d');
             const history = JSON.parse(localStorage.getItem('focusHistory') || '{}');
             const days = [];
             const hours = [];
-
             for (let i = 6; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(date.getDate() - i);
-                const key = date.toISOString().split('T')[0];
-                days.push(key.slice(5));
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const key = isoDate(d);
+                days.push(key.slice(5)); // MM-DD
                 hours.push(((history[key] || 0) / 3600).toFixed(2));
             }
 
@@ -327,10 +605,10 @@
                     datasets: [{
                         label: 'Hours Focused',
                         data: hours,
-                        backgroundColor: 'rgba(72, 61, 139, 0.7)',
-                        borderColor: 'rgba(72, 61, 139, 1)',
+                        backgroundColor: 'rgba(64,128,128,0.85)',
+                        borderColor: 'rgba(64,128,128,1)',
                         borderWidth: 1,
-                        borderRadius: 5
+                        borderRadius: 6
                     }]
                 },
                 options: {
@@ -343,17 +621,63 @@
             });
         }
 
+        // SoundCloud control helpers (using Widget API)
+        function initSoundCloudWidget() {
+            if (!window.SC || !scIframe) return;
+            scWidget = SC.Widget(scIframe);
+            scWidget.bind(SC.Widget.Events.READY, function() {
+                scReady = true;
+                // ensure we start paused
+                try { scWidget.pause(); } catch {}
+            });
+        }
+
+        function playMusic() {
+            if (!scWidget || !scReady) return;
+            try { scWidget.play(); } catch (e) { console.warn('SoundCloud play failed', e); }
+        }
+        function pauseMusic() {
+            if (!scWidget || !scReady) return;
+            try { scWidget.pause(); } catch (e) { console.warn('SoundCloud pause failed', e); }
+        }
+
+        // Event wiring
         startBtn.addEventListener('click', startTimer);
         pauseBtn.addEventListener('click', pauseTimer);
-        resetBtn.addEventListener('click', resetTimer);
+        resetBtn.addEventListener('click', () => {
+            if (!confirm('Reset the current timer?')) return;
+            resetTimer();
+        });
         resetStatsBtn.addEventListener('click', resetAllStats);
 
+        // Initialize on DOM ready
         document.addEventListener('DOMContentLoaded', () => {
+            // prepare UI state
             updateTimerDisplay();
+            pauseBtn.disabled = true;
+
+            // SoundCloud widget setup
+            initSoundCloudWidget();
+
+            // load stats and render chart
             loadFocusStats();
             renderFocusChart();
-            pauseBtn.disabled = true;
         });
+
+        // Make sure widget gets initialized even if SC script loads after DOMContentLoaded
+        window.addEventListener('load', () => {
+            if (!scWidget) initSoundCloudWidget();
+        });
+
+        // Expose a safe method for debugging (optional)
+        window.__prana = {
+            addFocusTime,
+            saveFocusStats,
+            loadFocusStats,
+            getState: () => ({
+                timeLeft, isPaused, dailyFocusSeconds, weeklyFocusSeconds, monthlyFocusSeconds
+            })
+        };
     </script>
 </body>
 </html>
