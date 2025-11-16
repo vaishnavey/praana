@@ -8,6 +8,8 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SoundCloud Widget API for controlling the player -->
     <script src="https://w.soundcloud.com/player/api.js"></script>
 
@@ -22,7 +24,7 @@
             --primary: #4f8f8f;
         }
 
-        /* Full-screen rotating serene landscape background */
+        /* Full-screen serene landscape background (static) */
         body{
             margin:0;
             font-family: 'Poppins', sans-serif;
@@ -36,7 +38,7 @@
             position:relative;
         }
 
-        /* Background slideshow container (behind everything) */
+        /* Background container (static image) */
         .bg {
             position: fixed;
             inset: 0;
@@ -61,7 +63,7 @@
             width: min(920px, 96%);
             display: grid;
             gap: 22px;
-            grid-template-columns: 1fr; /* single column since stats removed */
+            grid-template-columns: 1fr 360px;
             align-items:start;
             padding: 28px;
             border-radius: 18px;
@@ -71,12 +73,14 @@
             border: 1px solid rgba(255,255,255,0.6);
         }
 
-        /* Single-column layout on smaller screens (no change needed) */
+        /* Single-column layout on smaller screens */
         @media (max-width: 880px){
             .app{
                 grid-template-columns: 1fr;
                 padding: 20px;
             }
+            .stats-container { order: 2; }
+            .timer-container { order: 1; }
         }
 
         /* Timer card */
@@ -105,8 +109,7 @@
             margin-bottom: 18px;
         }
 
-        /* Big live clock */
-        .clock {
+        .timer {
             font-size: 4.4rem;
             font-weight: 600;
             color: var(--primary);
@@ -191,6 +194,50 @@
             display:block;
         }
 
+        /* Stats column */
+        .stats-container {
+            padding: 20px;
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.80));
+            border: 1px solid rgba(100,100,110,0.06);
+            box-shadow: 0 6px 20px rgba(22,22,22,0.06);
+            text-align:left;
+            min-height: 200px;
+        }
+        .stats-container h2 {
+            margin: 0 0 8px 0;
+            font-size: 1.05rem;
+            color: #213535;
+        }
+
+        .stats-item {
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            padding:8px 0;
+            color:var(--muted);
+            border-bottom: 1px dashed rgba(0,0,0,0.03);
+        }
+        .stats-item strong {
+            color: #173737;
+            font-weight:700;
+        }
+
+        #resetStats {
+            margin-top:12px;
+            width:100%;
+            background: linear-gradient(90deg,#ff6b6b,#ff3b3b);
+            border:none;
+            padding:10px;
+            color:white;
+            border-radius:10px;
+            cursor:pointer;
+            font-weight:600;
+        }
+        #resetStats:hover { opacity:0.95; }
+
+        canvas#focusChart { width:100% !important; height:200px !important; }
+
         /* small footer note */
         .note {
             font-size:0.84rem;
@@ -209,8 +256,7 @@
             <h1 id="appTitle">Prana</h1>
             <div class="subtitle">A calm, focused Pomodoro — with your Veena playlist</div>
 
-            <!-- Big live clock -->
-            <div class="clock" id="clockDisplay" aria-label="Current time">--:--:--</div>
+            <div class="timer" id="timerDisplay" aria-label="Timer">25:00</div>
 
             <div class="progress-bar" aria-hidden="true">
                 <div class="progress" id="progressBar"></div>
@@ -231,66 +277,183 @@
                 <iframe id="soundcloudPlayer" class="soundcloud"
                     scrolling="no" frameborder="no" allow="autoplay"
                     src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/vaishnavey-1/sets/veena&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true"
-                >
-                </iframe>
+                ></iframe>
             </div>
 
             <div class="note">Tip: Use the Pause button to take short breaks; your music will pause automatically.</div>
+        </div>
+
+        <div class="stats-container" aria-live="polite">
+            <h2>Your Focus Stats</h2>
+
+            <div class="stats-item"><div>Today</div><strong id="dailyHours">0h 0m</strong></div>
+            <div class="stats-item"><div>This Week</div><strong id="weeklyHours">0h 0m</strong></div>
+            <div class="stats-item"><div>This Month</div><strong id="monthlyHours">0h 0m</strong></div>
+
+            <canvas id="focusChart" width="400" height="220" aria-label="Focus history chart"></canvas>
+
+            <button id="resetStats">Reset All Stats</button>
         </div>
     </div>
 
     <script>
         // Elements
-        const clockDisplay = document.getElementById('clockDisplay');
+        const timerDisplay = document.getElementById('timerDisplay');
         const progressBar = document.getElementById('progressBar');
         const startBtn = document.getElementById('startBtn');
         const pauseBtn = document.getElementById('pauseBtn');
         const resetBtn = document.getElementById('resetBtn');
+        const dailyHoursDisplay = document.getElementById('dailyHours');
+        const weeklyHoursDisplay = document.getElementById('weeklyHours');
+        const monthlyHoursDisplay = document.getElementById('monthlyHours');
+        const resetStatsBtn = document.getElementById('resetStats');
+        const backgroundEl = document.getElementById('background');
 
-        // Timer settings (Pomodoro logic kept but stats removed)
+        // Timer settings
         const workDuration = 25 * 60; // seconds
         let timeLeft = workDuration;
         let timerInterval = null;
         let isPaused = true;
+
+        // Session accounting: prevents double-counting on pause/resume
+        let sessionStartTime = 0; // epoch ms when current running segment started
+        let sessionAccumulatedCredited = 0; // seconds credited so far for this Pomodoro session
+
+        // Focus history canonical source: { "YYYY-MM-DD": seconds, ... }
+        // Stored under 'focusHistory' in localStorage
+        let focusHistory = {}; // in-memory cache
 
         // SoundCloud widget
         let scWidget = null;
         let scReady = false;
         const scIframe = document.getElementById('soundcloudPlayer');
 
-        // Background images to rotate (serene landscapes from Unsplash)
+        // Background image (static): use the first scenic image
         const backgrounds = [
             "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=1400&q=80",
             "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=80",
             "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
             "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=80"
         ];
-        let bgIndex = 0;
 
-        function rotateBackground() {
-            const backgroundEl = document.getElementById('background');
-            backgroundEl.style.backgroundImage = `url("${backgrounds[bgIndex]}")`;
+        // Utility: get ISO date string YYYY-MM-DD
+        function isoDate(d = new Date()) {
+            return d.toISOString().split('T')[0];
+        }
+
+        // Week start (Sunday) for a given date
+        function weekStartDate(d) {
+            const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const day = date.getDay(); // 0 (Sun) - 6
+            date.setDate(date.getDate() - day);
+            return isoDate(date);
+        }
+
+        // Safe integer clamp
+        function safeInt(n) {
+            n = Math.floor(Number(n) || 0);
+            if (!isFinite(n) || n < 0) return 0;
+            return n;
+        }
+
+        // Set static background (first image)
+        function setStaticBackground() {
+            backgroundEl.style.backgroundImage = `url("${backgrounds[0]}")`;
             backgroundEl.style.opacity = 1;
-            bgIndex = (bgIndex + 1) % backgrounds.length;
         }
-        // initial background and start interval
-        rotateBackground();
-        setInterval(rotateBackground, 9000);
 
-        // Utility: format two-digit
-        function two(n){ return n.toString().padStart(2,'0'); }
+        // ---------- Focus history & totals ----------
 
-        // Live clock update
-        function updateClock() {
+        // Load focusHistory from localStorage (canonical source)
+        function loadFocusStats() {
+            const raw = localStorage.getItem('focusHistory') || '{}';
+            try {
+                focusHistory = JSON.parse(raw) || {};
+            } catch (e) {
+                focusHistory = {};
+                localStorage.removeItem('focusHistory');
+            }
+
+            // ensure all values are safe integers
+            for (const k of Object.keys(focusHistory)) {
+                focusHistory[k] = safeInt(focusHistory[k]);
+            }
+
+            updateFocusStatsDisplay();
+            renderFocusChart();
+        }
+
+        // Persist focusHistory
+        function saveFocusHistory() {
+            localStorage.setItem('focusHistory', JSON.stringify(focusHistory));
+        }
+
+        // Compute totals from focusHistory
+        function computeTotals() {
             const now = new Date();
-            const h = two(now.getHours());
-            const m = two(now.getMinutes());
-            const s = two(now.getSeconds());
-            clockDisplay.textContent = `${h}:${m}:${s}`;
+            const todayKey = isoDate(now);
+            const weekStartKey = weekStartDate(now);
+            const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}`; // YYYY-MM
+
+            let daily = 0, weekly = 0, monthly = 0;
+            for (const [dateKey, seconds] of Object.entries(focusHistory)) {
+                if (!dateKey || typeof seconds !== 'number') continue;
+                if (dateKey === todayKey) daily += seconds;
+                if (dateKey >= weekStartKey && dateKey <= todayKey) weekly += seconds;
+                if (dateKey.startsWith(monthPrefix)) monthly += seconds;
+            }
+
+            return {
+                dailyFocusSeconds: safeInt(daily),
+                weeklyFocusSeconds: safeInt(weekly),
+                monthlyFocusSeconds: safeInt(monthly)
+            };
         }
 
-        // Update only progress bar based on current timeLeft
-        function updateProgressBar() {
+        // Format seconds as "Xh Ym"
+        function formatTime(totalSeconds) {
+            totalSeconds = safeInt(totalSeconds);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        // Update the shown stats UI based on focusHistory
+        function updateFocusStatsDisplay() {
+            const totals = computeTotals();
+            dailyHoursDisplay.textContent = formatTime(totals.dailyFocusSeconds);
+            weeklyHoursDisplay.textContent = formatTime(totals.weeklyFocusSeconds);
+            monthlyHoursDisplay.textContent = formatTime(totals.monthlyFocusSeconds);
+        }
+
+        // Add focused seconds to today's entry in focusHistory (canonical)
+        function addFocusTime(secondsToAdd) {
+            secondsToAdd = safeInt(secondsToAdd);
+            if (secondsToAdd <= 0) return;
+
+            const today = isoDate();
+            focusHistory[today] = safeInt((focusHistory[today] || 0) + secondsToAdd);
+            saveFocusHistory();
+            updateFocusStatsDisplay();
+            renderFocusChart();
+        }
+
+        // Reset all stats (deletes focusHistory)
+        function resetAllStats() {
+            if (!confirm('Are you sure you want to reset all your focus statistics?')) return;
+            focusHistory = {};
+            localStorage.removeItem('focusHistory');
+            updateFocusStatsDisplay();
+            renderFocusChart();
+            alert('All focus statistics have been reset.');
+        }
+
+        // ---------- Timer logic with corrected session accounting ----------
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
             const progressWidth = Math.max(0, Math.min(100, ((workDuration - timeLeft) / workDuration) * 100));
             progressBar.style.width = `${progressWidth}%`;
         }
@@ -301,21 +464,42 @@
             startBtn.textContent = 'Running';
             startBtn.disabled = true;
             pauseBtn.disabled = false;
-
+            // start session accumulation tracking
+            sessionStartTime = Date.now();
+            // start the ticking interval
             timerInterval = setInterval(() => {
                 timeLeft--;
-                updateProgressBar();
+                updateTimerDisplay();
 
                 if (timeLeft <= 0) {
+                    // Stop interval
                     clearInterval(timerInterval);
                     timerInterval = null;
-                    alert("Time's up! Take a break.");
+
+                    // Compute elapsed since session started
+                    let elapsedSegment = 0;
+                    if (sessionStartTime) {
+                        elapsedSegment = Math.floor((Date.now() - sessionStartTime) / 1000);
+                        if (elapsedSegment < 0) elapsedSegment = 0;
+                    }
+
+                    // clamp to remaining amount for this pomodoro session
+                    const remainingForSession = Math.max(0, workDuration - sessionAccumulatedCredited);
+                    const toCredit = Math.min(elapsedSegment, remainingForSession);
+
+                    if (toCredit > 0) {
+                        addFocusTime(toCredit);
+                        sessionAccumulatedCredited += toCredit;
+                    }
+
+                    alert("Time's up! Take a break. Your focused time has been recorded.");
                     pauseMusic();
+
+                    // reset timer state for next session
                     resetTimer(true);
                 }
             }, 1000);
 
-            // start music
             playMusic();
         }
 
@@ -328,7 +512,20 @@
             startBtn.disabled = false;
             pauseBtn.disabled = true;
 
-            // pause music
+            // compute elapsed segment and credit only the delta that hasn't been credited yet
+            if (sessionStartTime) {
+                const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
+                if (elapsed > 0) {
+                    const remainingForSession = Math.max(0, workDuration - sessionAccumulatedCredited);
+                    const delta = Math.min(elapsed, remainingForSession);
+                    if (delta > 0) {
+                        addFocusTime(delta);
+                        sessionAccumulatedCredited += delta;
+                    }
+                }
+            }
+            sessionStartTime = 0;
+
             pauseMusic();
         }
 
@@ -338,22 +535,68 @@
             timerInterval = null;
             timeLeft = workDuration;
             isPaused = true;
+            sessionStartTime = 0;
+            sessionAccumulatedCredited = 0;
             startBtn.disabled = false;
             startBtn.textContent = 'Start';
             pauseBtn.disabled = true;
-            updateProgressBar();
+            updateTimerDisplay();
 
-            // pause music on reset
             pauseMusic();
         }
 
-        // SoundCloud control helpers (using Widget API)
+        // ---------- Chart rendering ----------
+
+        function renderFocusChart() {
+            const ctx = document.getElementById('focusChart').getContext('2d');
+            // construct last 7 days labels and values using focusHistory
+            const days = [];
+            const hours = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const key = isoDate(d);
+                days.push(key.slice(5)); // MM-DD
+                hours.push(((focusHistory[key] || 0) / 3600).toFixed(2));
+            }
+
+            if (window.focusChartInstance) window.focusChartInstance.destroy();
+
+            window.focusChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'Hours Focused',
+                        data: hours,
+                        backgroundColor: 'rgba(64,128,128,0.85)',
+                        borderColor: 'rgba(64,128,128,1)',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Hours' } },
+                        x: { title: { display: true, text: 'Date (MM-DD)' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // ---------- SoundCloud control helpers (using Widget API) ----------
+
         function initSoundCloudWidget() {
             if (!window.SC || !scIframe) return;
-            scWidget = SC.Widget(scIframe);
+            try {
+                scWidget = SC.Widget(scIframe);
+            } catch (e) {
+                scWidget = null;
+            }
+            if (!scWidget) return;
             scWidget.bind(SC.Widget.Events.READY, function() {
                 scReady = true;
-                // ensure we start paused
                 try { scWidget.pause(); } catch {}
             });
         }
@@ -367,34 +610,45 @@
             try { scWidget.pause(); } catch (e) { console.warn('SoundCloud pause failed', e); }
         }
 
-        // Event wiring
+        // ---------- Event wiring ----------
+
         startBtn.addEventListener('click', startTimer);
         pauseBtn.addEventListener('click', pauseTimer);
         resetBtn.addEventListener('click', () => {
             if (!confirm('Reset the current timer?')) return;
             resetTimer();
         });
+        resetStatsBtn.addEventListener('click', resetAllStats);
 
-        // Initialize on DOM ready
+        // ---------- Initialization ----------
+
         document.addEventListener('DOMContentLoaded', () => {
+            // static background
+            setStaticBackground();
+
             // prepare UI state
-            updateClock();
-            setInterval(updateClock, 1000); // live clock
-            updateProgressBar();
+            updateTimerDisplay();
             pauseBtn.disabled = true;
 
             // SoundCloud widget setup
             initSoundCloudWidget();
+
+            // load canonical focus history and render chart / stats
+            loadFocusStats();
         });
 
-        // Make sure widget gets initialized even if SC script loads after DOMContentLoaded
+        // Ensure widget initialization if SC script finishes after DOM load
         window.addEventListener('load', () => {
             if (!scWidget) initSoundCloudWidget();
         });
 
-        // Expose a safe method for debugging (optional)
+        // Expose some helpers for debugging
         window.__prana = {
-            saveState: () => ({ timeLeft, isPaused })
+            addFocusTime,
+            loadFocusStats,
+            getState: () => ({
+                timeLeft, isPaused, sessionAccumulatedCredited, focusHistory: Object.assign({}, focusHistory)
+            })
         };
     </script>
 </body>
