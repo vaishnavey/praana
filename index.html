@@ -1,149 +1,359 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Praana - Study with Music</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #fffaf0;
-      color: #333;
-    }
-    header {
-      background-color: #b22222;
-      color: white;
-      padding: 1em 2em;
-      text-align: center;
-    }
-    nav {
-      display: flex;
-      justify-content: center;
-      background-color: #f5f5f5;
-      padding: 0.5em;
-    }
-    nav a {
-      margin: 0 1em;
-      text-decoration: none;
-      color: #b22222;
-      font-weight: bold;
-    }
-    .content {
-      padding: 2em;
-    }
-    .section {
-      margin-bottom: 2em;
-    }
-    .music-player iframe {
-      width: 100%;
-      height: 166px;
-    }
-    .timer {
-      text-align: center;
-      margin: 2em auto;
-      max-width: 300px;
-      padding: 1em;
-      border: 2px solid #b22222;
-      border-radius: 8px;
-      background-color: #fff;
-    }
-    .timer h2 {
-      margin-bottom: 1em;
-    }
-    .timer-controls button {
-      margin: 0.5em;
-      padding: 0.5em 1em;
-      background-color: #b22222;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Prana</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #FFD700, #FF6347);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+            background-size: 400% 400%;
+            animation: gradientAnimation 15s ease infinite;
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .timer-container, .stats-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 5px solid #DAA520;
+            max-width: 500px;
+            width: 100%;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .stats-container {
+            border-color: #483D8B;
+        }
+
+        h1 {
+            color: #8B0000;
+            font-family: 'Merriweather', serif;
+            font-size: 2.5em;
+            margin-bottom: 25px;
+        }
+
+        .timer {
+            font-size: 5em;
+            color: #4CAF50;
+            margin: 30px 0;
+            font-weight: 600;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .progress-bar {
+            height: 25px;
+            width: 90%;
+            background-color: #eee;
+            border-radius: 12px;
+            margin: 25px auto;
+            overflow: hidden;
+            border: 1px solid #ccc;
+        }
+
+        .progress {
+            height: 100%;
+            background-color: #FF8C00;
+            width: 0;
+            transition: width 0.5s linear;
+            border-radius: 12px;
+        }
+
+        .button-group button {
+            background-color: #008080;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 1.3em;
+            cursor: pointer;
+            margin: 10px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .button-group button:hover {
+            background-color: #006666;
+            transform: translateY(-2px);
+        }
+
+        .button-group button:active {
+            transform: translateY(0);
+        }
+
+        .music-note {
+            font-size: 1.1em;
+            color: #6A5ACD;
+            margin-top: 25px;
+            font-style: italic;
+        }
+
+        .stats-item {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            color: #36454F;
+        }
+
+        .stats-item strong {
+            color: #008080;
+            font-size: 1.3em;
+        }
+
+        #resetStats {
+            background-color: #DC143C;
+            margin-top: 20px;
+        }
+
+        #resetStats:hover {
+            background-color: #B22222;
+        }
+
+        canvas {
+            max-width: 500px;
+            margin-top: 30px;
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>Praana</h1>
-    <p>Indian Traditional Classical Music for Study</p>
-  </header>
+    <div class="timer-container">
+        <h1>Prana</h1>
+        <div class="timer" id="timerDisplay">25:00</div>
+        <div class="progress-bar">
+            <div class="progress" id="progressBar"></div>
+        </div>
+        <div class="button-group">
+            <button id="startBtn">Start</button>
+            <button id="pauseBtn">Pause</button>
+            <button id="resetBtn">Reset</button>
+        </div>
+        <div class="music-note">
+            🎵 Now playing: Your Veena SoundCloud playlist 🎵<br/>
+            <iframe width="100%" height="120" scrolling="no" frameborder="no" allow="autoplay"
+                src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/vaishnavey-1/sets/veena&color=%23ff5500&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true">
+            </iframe>
+        </div>
+    </div>
 
-  <nav>
-    <a href="#about">About</a>
-    <a href="#music">Study Music</a>
-    <a href="#timer">Pomodoro Timer</a>
-    <a href="#contact">Contact</a>
-  </nav>
+    <div class="stats-container">
+        <h2>Your Focus Stats</h2>
+        <div class="stats-item">Today: <strong id="dailyHours">0h 0m</strong></div>
+        <div class="stats-item">This Week: <strong id="weeklyHours">0h 0m</strong></div>
+        <div class="stats-item">This Month: <strong id="monthlyHours">0h 0m</strong></div>
+        <button id="resetStats">Reset All Stats</button>
+    </div>
 
-  <div class="content">
-    <section id="about" class="section">
-      <h2>About</h2>
-      <p>Praana is an initiative by a classical musician to enhance study experiences using ambient Indian traditional music. Our vision is to provide a calming, focused environment using the power of sound.</p>
-    </section>
+    <canvas id="focusChart" width="500" height="300"></canvas>
 
-    <section id="music" class="section">
-      <h2>Study Music Playlist</h2>
-      <p>Listen to our curated YouTube playlist:</p>
-      <div class="music-player">
-        <iframe src="https://youtube.com/playlist?list=PLr7KFsWIGucHJW30vdWHtvwEDJW236-EZ&si=5SfDJ7-IP24Jmpfe" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-      </div>
-    </section>
+    <script>
+        const timerDisplay = document.getElementById('timerDisplay');
+        const progressBar = document.getElementById('progressBar');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const dailyHoursDisplay = document.getElementById('dailyHours');
+        const weeklyHoursDisplay = document.getElementById('weeklyHours');
+        const monthlyHoursDisplay = document.getElementById('monthlyHours');
+        const resetStatsBtn = document.getElementById('resetStats');
 
-    <section id="timer" class="section timer">
-      <h2>Pomodoro Timer</h2>
-      <div id="countdown">25:00</div>
-      <div class="timer-controls">
-        <button onclick="startTimer()">Start</button>
-        <button onclick="pauseTimer()">Pause</button>
-        <button onclick="resetTimer()">Reset</button>
-      </div>
-    </section>
+        let timeLeft = 25 * 60;
+        const workDuration = 25 * 60;
+        let timerInterval;
+        let isPaused = true;
+        let sessionStartTime = 0;
 
-    <section id="contact" class="section">
-      <h2>Contact</h2>
-      <p>For collaborations or inquiries, reach out at: <a href="mailto:praanamusic@protonmail.com">praanamusic@protonmail.com</a></p>
-    </section>
-  </div>
+        let dailyFocusSeconds = 0;
+        let weeklyFocusSeconds = 0;
+        let monthlyFocusSeconds = 0;
+        let lastActivityDate = new Date();
 
-  <footer>
-    <p>&copy; 2025 Praana Music. All rights reserved.</p>
-  </footer>
+        function loadFocusStats() {
+            const savedStats = localStorage.getItem('pomodoroFocusStats');
+            if (savedStats) {
+                const stats = JSON.parse(savedStats);
+                dailyFocusSeconds = stats.dailyFocusSeconds || 0;
+                weeklyFocusSeconds = stats.weeklyFocusSeconds || 0;
+                monthlyFocusSeconds = stats.monthlyFocusSeconds || 0;
+                lastActivityDate = new Date(stats.lastActivityDate);
 
-  <script>
-    let time = 25 * 60;
-    let countdownEl = document.getElementById("countdown");
-    let timerInterval;
-
-    function updateDisplay() {
-      let minutes = Math.floor(time / 60);
-      let seconds = time % 60;
-      countdownEl.innerHTML = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-
-    function startTimer() {
-      clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        if (time > 0) {
-          time--;
-          updateDisplay();
-        } else {
-          clearInterval(timerInterval);
-          alert("Time's up! Take a short break.");
+                const now = new Date();
+                if (now.toDateString() !== lastActivityDate.toDateString()) dailyFocusSeconds = 0;
+                if (now.getDay() < lastActivityDate.getDay() || now.getTime() - lastActivityDate.getTime() > 7 * 86400000) weeklyFocusSeconds = 0;
+                if (now.getMonth() !== lastActivityDate.getMonth() || now.getFullYear() !== lastActivityDate.getFullYear()) monthlyFocusSeconds = 0;
+            }
+            updateFocusStatsDisplay();
+            lastActivityDate = new Date();
+            saveFocusStats();
         }
-      }, 1000);
-    }
 
-    function pauseTimer() {
-      clearInterval(timerInterval);
-    }
+        function saveFocusStats() {
+            const stats = {
+                dailyFocusSeconds,
+                weeklyFocusSeconds,
+                monthlyFocusSeconds,
+                lastActivityDate: new Date().toISOString()
+            };
+            localStorage.setItem('pomodoroFocusStats', JSON.stringify(stats));
 
-    function resetTimer() {
-      clearInterval(timerInterval);
-      time = 25 * 60;
-      updateDisplay();
-    }
+            const today = new Date().toISOString().split('T')[0];
+            const history = JSON.parse(localStorage.getItem('focusHistory') || '{}');
+            history[today] = (history[today] || 0) + (dailyFocusSeconds - (history[today] || 0));
+            localStorage.setItem('focusHistory', JSON.stringify(history));
+        }
 
-    updateDisplay();
-  </script>
+        function addFocusTime(seconds) {
+            dailyFocusSeconds += seconds;
+            weeklyFocusSeconds += seconds;
+            monthlyFocusSeconds += seconds;
+            updateFocusStatsDisplay();
+            saveFocusStats();
+        }
+
+        function formatTime(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        function updateFocusStatsDisplay() {
+            dailyHoursDisplay.textContent = formatTime(dailyFocusSeconds);
+            weeklyHoursDisplay.textContent = formatTime(weeklyFocusSeconds);
+            monthlyHoursDisplay.textContent = formatTime(monthlyFocusSeconds);
+        }
+
+        function resetAllStats() {
+            if (confirm('Are you sure you want to reset all your focus statistics?')) {
+                dailyFocusSeconds = 0;
+                weeklyFocusSeconds = 0;
+                monthlyFocusSeconds = 0;
+                localStorage.removeItem('pomodoroFocusStats');
+                localStorage.removeItem('focusHistory');
+                updateFocusStatsDisplay();
+                renderFocusChart();
+                alert('All focus statistics have been reset.');
+            }
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            const progressWidth = ((workDuration - timeLeft) / workDuration) * 100;
+            progressBar.style.width = `${progressWidth}%`;
+        }
+
+        function startTimer() {
+            if (isPaused) {
+                isPaused = false;
+                startBtn.textContent = 'Continue';
+                pauseBtn.disabled = false;
+                sessionStartTime = new Date().getTime();
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    updateTimerDisplay();
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        addFocusTime(workDuration);
+                        alert('Time\'s up! Take a break. Your focused time has been recorded.');
+                        resetTimer();
+                    }
+                }, 1000);
+            }
+        }
+
+        function pauseTimer() {
+            if (!isPaused) {
+                clearInterval(timerInterval);
+                isPaused = true;
+                startBtn.textContent = 'Resume';
+                const focusedSecondsThisSegment = Math.floor((new Date().getTime() - sessionStartTime) / 1000);
+                if (focusedSecondsThisSegment > 0) {
+                    addFocusTime(focusedSecondsThisSegment);
+                }
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timeLeft = workDuration;
+            isPaused = true;
+            startBtn.textContent = 'Start';
+            pauseBtn.disabled = true;
+            updateTimerDisplay();
+        }
+
+        function renderFocusChart() {
+            const ctx = document.getElementById('focusChart').getContext('2d');
+            const history = JSON.parse(localStorage.getItem('focusHistory') || '{}');
+            const days = [];
+            const hours = [];
+
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const key = date.toISOString().split('T')[0];
+                days.push(key.slice(5));
+                hours.push(((history[key] || 0) / 3600).toFixed(2));
+            }
+
+            if (window.focusChartInstance) window.focusChartInstance.destroy();
+
+            window.focusChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'Hours Focused',
+                        data: hours,
+                        backgroundColor: 'rgba(72, 61, 139, 0.7)',
+                        borderColor: 'rgba(72, 61, 139, 1)',
+                        borderWidth: 1,
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Hours' } },
+                        x: { title: { display: true, text: 'Date (MM-DD)' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        startBtn.addEventListener('click', startTimer);
+        pauseBtn.addEventListener('click', pauseTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        resetStatsBtn.addEventListener('click', resetAllStats);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTimerDisplay();
+            loadFocusStats();
+            renderFocusChart();
+            pauseBtn.disabled = true;
+        });
+    </script>
 </body>
 </html>
