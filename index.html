@@ -246,12 +246,23 @@
             text-align:center;
         }
 
+        /* auth area */
+        #authArea { display:flex; gap:8px; align-items:center; justify-content:flex-end; }
+        #authArea .btn { min-width: auto; padding:8px 12px; }
+
     </style>
 </head>
 <body>
     <div class="bg" id="background"></div>
 
     <div class="app" role="main" aria-labelledby="appTitle">
+        <!-- Auth area: sign-in / sign-out -->
+        <div id="authArea" style="grid-column: 2 / 3; justify-self: end;">
+            <button id="googleSignInBtn" class="btn ghost">Sign in with Google</button>
+            <button id="signOutBtn" class="btn ghost" style="display:none;">Sign out</button>
+            <span id="signedInEmail" style="margin-left:8px; color:var(--muted);"></span>
+        </div>
+
         <div class="timer-container" aria-live="polite">
             <h1 id="appTitle">Prana</h1>
             <div class="subtitle">A calm, focused Pomodoro — with your Veena playlist</div>
@@ -635,6 +646,41 @@
 
             // load canonical focus history and render chart / stats
             loadFocusStats();
+
+            // Wire auth UI if the google sync helper is present
+            const signInBtn = document.getElementById('googleSignInBtn');
+            const signOutBtn = document.getElementById('signOutBtn');
+            const emailSpan = document.getElementById('signedInEmail');
+            if (window.pranaGoogleSync) {
+                // set up UI callbacks
+                signInBtn.addEventListener('click', async () => {
+                    try { await window.pranaGoogleSync.signInWithGooglePopup(); } catch (e) { alert('Sign-in failed: ' + (e.message || e)); }
+                });
+                signOutBtn.addEventListener('click', async () => { try { await window.pranaGoogleSync.signOut(); } catch (e) { console.warn(e); } });
+
+                window.pranaGoogleSync.setOnAuthChange((user) => {
+                    if (user) {
+                        signInBtn.style.display = 'none';
+                        signOutBtn.style.display = '';
+                        emailSpan.textContent = user.email || user.displayName || '';
+                    } else {
+                        signInBtn.style.display = '';
+                        signOutBtn.style.display = 'none';
+                        emailSpan.textContent = '';
+                    }
+                });
+
+                // Initialize the helper with a placeholder config — paste your Firebase config here.
+                // Example: window.pranaGoogleSync.init({ firebaseConfig: { apiKey: '...', authDomain: '...', projectId: '...' } });
+                // We keep autoAttachAddFocusTime true so server sync happens automatically when addFocusTime is called.
+                // Callers should replace the firebaseConfig placeholder with their project's config.
+                // If the helper is included as a separate file, you can call init from there. For now we call with empty config and the helper will no-op if missing.
+                try {
+                    window.pranaGoogleSync.init({ firebaseConfig: {} , autoAttachAddFocusTime: true });
+                } catch (e) {
+                    console.warn('pranaGoogleSync init error or helper not loaded yet', e);
+                }
+            }
         });
 
         // Ensure widget initialization if SC script finishes after DOM load
@@ -651,5 +697,8 @@
             })
         };
     </script>
+
+    <!-- Firebase Google OAuth + Firestore sync helper (drop-in). Put your firebase config into the init call above. -->
+    <script src="assets/firebase-google-sync.js"></script>
 </body>
 </html>
